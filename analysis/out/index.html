@@ -1,0 +1,257 @@
+<meta name="dash-one-writer">
+<meta name="dash-form" content="freeform">
+<style>
+  .vs { font-family: var(--font-anthropic-sans); color: var(--color-fg); max-width: 920px; margin: 0 auto; }
+  .vs-hero { text-align: center; padding: var(--cds-pad-xl) 0 var(--cds-pad-lg); }
+  .vs-emoji { font-size: 44px; line-height: 1; }
+  .vs-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: clamp(30px, 6vw, 48px); margin: var(--cds-gap-sm) 0; }
+  .vs-sub { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); }
+  .vs-lead { font-size: var(--cds-font-size-heading); line-height: 1.5; margin: var(--cds-gap-lg) auto 0; max-width: 640px; }
+  .vs-lead b { font-variant-numeric: tabular-nums; }
+  .vs-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cds-gap-md); margin: var(--cds-gap-lg) 0; }
+  .vs-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); }
+  .vs-kpi-label { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .vs-kpi-value { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 34px; font-variant-numeric: tabular-nums; margin-top: 4px; min-height: 40px; }
+  .vs-section { margin: calc(var(--cds-gap-xl) * 1.6) 0 0; }
+  .vs-h2 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: clamp(22px, 4vw, 30px); margin: 0 0 var(--cds-gap-sm); }
+  .vs-intro { color: var(--color-fg-muted); margin: 0 0 var(--cds-gap-md); line-height: 1.5; }
+  .vs-intro b, .vs-big b { color: var(--color-fg); font-variant-numeric: tabular-nums; }
+  .vs-big { font-size: var(--cds-font-size-heading); line-height: 1.5; margin: 0 0 var(--cds-gap-md); }
+  .vs-bars { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+  .vs-bar-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: end; }
+  .vs-bar-label { font-size: var(--cds-font-size-caption); line-height: 1.3; overflow-wrap: anywhere; }
+  .vs-bar-label small { color: var(--color-fg-muted); }
+  .vs-bar-value { font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; color: var(--color-fg-muted); white-space: nowrap; }
+  .vs-bar-track { grid-column: 1 / -1; height: 10px; border-radius: 5px; background: var(--cds-chart-grid); overflow: hidden; }
+  .vs-bar-fill { height: 100%; border-radius: 5px; }
+  .vs-quotes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--cds-gap-md); min-height: 80px; }
+  .vs-quote { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: 10px; }
+  .vs-quote-text { font-size: var(--cds-font-size-body); line-height: 1.5; overflow-wrap: anywhere; }
+  .vs-quote-meta { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-top: auto; }
+  .vs-quote-likes { font-variant-numeric: tabular-nums; color: var(--color-fg); }
+  .vs-fact { background: var(--color-panel); border-left: 4px solid var(--color-warn); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); margin: var(--cds-gap-md) 0; line-height: 1.5; }
+  .vs-twocol { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--cds-gap-lg); }
+  .vs-h3 { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); margin: 0 0 var(--cds-gap-sm); }
+  .vs-err { color: var(--color-bad); font-size: var(--cds-font-size-caption); }
+  .vs-foot { margin: calc(var(--cds-gap-xl) * 1.6) 0 var(--cds-gap-xl); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.5; }
+  .vs-foot summary { cursor: pointer; }
+</style>
+
+<div class="vs" lang="be">
+
+  <header class="vs-hero" id="hero">
+    <div class="vs-emoji">🐱🥸📜</div>
+    <h1 class="vs-title">Вусы Скарыны ў лічбах</h1>
+    <div class="vs-sub">Белсат History · <span data-draw="tot-span" class="dash-skeleton" data-source="totals" data-field="span" data-row="0">—</span></div>
+    <p class="vs-lead"><b data-draw="tot-episodes" class="dash-skeleton" data-source="totals" data-field="episodes" data-row="0">—</b> выпускаў, якія паглядзелі <b data-draw="tot-views" class="dash-skeleton" data-source="totals" data-field="views" data-row="0">—</b> разоў. Дзякуй усім, хто гэта рабіў ❤</p>
+  </header>
+
+  <div class="vs-kpis" id="kpis">
+    <div class="vs-card"><div class="vs-kpi-label">Праглядаў</div><div class="vs-kpi-value dash-skeleton" data-draw="kpi" data-source="totals" data-field="views" data-row="0">—</div></div>
+    <div class="vs-card"><div class="vs-kpi-label">Лайкаў</div><div class="vs-kpi-value dash-skeleton" data-draw="kpi" data-source="totals" data-field="likes" data-row="0">—</div></div>
+    <div class="vs-card"><div class="vs-kpi-label">Каментароў</div><div class="vs-kpi-value dash-skeleton" data-draw="kpi" data-source="totals" data-field="comments" data-row="0">—</div></div>
+    <div class="vs-card"><div class="vs-kpi-label">Гадзін эфіру</div><div class="vs-kpi-value dash-skeleton" data-draw="kpi" data-source="totals" data-field="hours" data-row="0">—</div></div>
+  </div>
+
+  <section class="vs-section" id="top-views">
+    <h2 class="vs-h2">🏆 Топ-10 выпускаў па праглядах</h2>
+    <p class="vs-intro">Пра што гледачы глядзелі найбольш.</p>
+    <div class="vs-bars" data-draw="top-views" data-source="episodes"></div>
+  </section>
+
+  <section class="vs-section" id="by-year">
+    <h2 class="vs-h2">📅 Па гадах</h2>
+    <p class="vs-intro">Колькі выпускаў выйшла кожны год і колькі ў іх праглядаў разам (праз кропку — колькасць выпускаў).</p>
+    <div class="vs-bars" data-draw="by-year" data-source="by_year"></div>
+  </section>
+
+  <section class="vs-section" id="comments">
+    <h2 class="vs-h2">💬 Гледачы пішуць</h2>
+    <p class="vs-big">У архіве <b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=archived">—</b> каментароў ад <b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=authors">—</b> розных людзей. У <b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=thanks">—</b> з іх ёсць «дзякуй», а сардэчак ❤ — <b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=hearts">—</b>.</p>
+    <div class="vs-fact" id="smm">🏅 <b>Чэмпіён размоў:</b> наш SMM адказаў гледачам <b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=admin">—</b> разоў — амаль кожны пяты каментар пад «Вусамі» напісаны ім.</div>
+    <div class="vs-twocol">
+      <div id="langs">
+        <h3 class="vs-h3">На якой мове пішуць</h3>
+        <div class="vs-bars" data-draw="langs" data-source="numbers"></div>
+      </div>
+      <div id="most-commented">
+        <h3 class="vs-h3">Дзе спрачаліся найбольш</h3>
+        <div class="vs-bars" data-draw="most-commented" data-source="episodes"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="vs-section" id="cats">
+    <h2 class="vs-h2">🐱 Коцікі</h2>
+    <p class="vs-big">Пра катоў — <b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=cats">—</b> каментароў. Іх любяць больш за ўсіх: некаторыя прызнаюцца, што падпісаліся на канал менавіта праз іх.</p>
+    <div class="vs-twocol">
+      <div id="cat-forms">
+        <h3 class="vs-h3">Як іх называюць</h3>
+        <div class="vs-bars" data-draw="cat-forms" data-source="numbers"></div>
+      </div>
+      <div class="vs-fact" id="cat-myth">🎙 <b>Таямніца раскрытая:</b> гледачы былі ўпэўненыя, што катоў агучвае Цімох «змененым голасам». Насамрэч іх агучвала каманда 😉</div>
+    </div>
+    <div class="vs-quotes" data-draw="quotes" data-cat="cats" data-source="highlights"></div>
+  </section>
+
+  <section class="vs-section" id="vitya">
+    <h2 class="vs-h2">🎭 Віктар</h2>
+    <p class="vs-big"><b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=vitya">—</b> каментароў пра Віктара, і ў <b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=oscar">—</b> з іх гледачы патрабуюць даць яму «Оскар».</p>
+    <div class="vs-quotes" data-draw="quotes" data-cat="vitya" data-source="highlights"></div>
+  </section>
+
+  <section class="vs-section" id="timokh">
+    <h2 class="vs-h2">🎓 Цімох</h2>
+    <p class="vs-big"><b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=timokh">—</b> каментароў пра вядучага. Ён хацеў сур'ёзна — а гледачы асобна дзякуюць за гумар.</p>
+    <div class="vs-quotes" data-draw="quotes" data-cat="timokh" data-source="highlights"></div>
+  </section>
+
+  <section class="vs-section" id="humor">
+    <h2 class="vs-h2">😂 Смех</h2>
+    <p class="vs-big"><b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=humor">—</b> каментароў пра смех і жарты. Значыць, дурэлі не дарма.</p>
+    <div class="vs-quotes" data-draw="quotes" data-cat="humor" data-source="highlights"></div>
+  </section>
+
+  <section class="vs-section" id="graphics">
+    <h2 class="vs-h2">🎨 Графіка і мантаж</h2>
+    <p class="vs-big"><b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=graphics">—</b> каментароў пра графіку, анімацыю і мантаж. Мала, але якія!</p>
+    <div class="vs-quotes" data-draw="quotes" data-cat="graphics" data-source="highlights"></div>
+  </section>
+
+  <section class="vs-section" id="sound">
+    <h2 class="vs-h2">🎧 Гук і музыка</h2>
+    <p class="vs-big"><b class="dash-skeleton" data-draw="num" data-source="numbers" data-field="value" data-where="metric=sound">—</b> каментароў пра гук, музыку і спевы — уключна з адной сумленнай заўвагай гукарэжысёру 😅</p>
+    <div class="vs-quotes" data-draw="quotes" data-cat="sound" data-source="highlights"></div>
+  </section>
+
+  <section class="vs-section" id="top-comments">
+    <h2 class="vs-h2">⭐ Самыя залайканыя каментары</h2>
+    <div class="vs-quotes" data-draw="quotes" data-cat="top" data-source="highlights"></div>
+  </section>
+
+  <details class="vs-foot" id="notes">
+    <summary>Як лічылі</summary>
+    <p>Прагляды, лайкі і колькасць каментароў — публічныя дадзеныя YouTube па плэйлісце «Вусы Скарыны», сабраныя 27 лістапада 2026. Колькасці каментароў «пра катоў», «пра Віктара» і г.д. — падлік па ключавых словах у архіве каментароў, таму яны прыблізныя. Цытаты абраныя ўручную з самых залайканых, імёны аўтараў не паказваюцца. Мова каментара вызначаная па літарах (ў, і, ї, є, ы…) — таксама прыблізна.</p>
+  </details>
+</div>
+
+<script>
+  window.vsFmt = (() => {
+    const loc = d3.formatLocale({ decimal: ',', thousands: ' ', grouping: [3], currency: ['', ''] });
+    const f = loc.format(',d');
+    return (v) => f(Math.round(+v));
+  })();
+  window.vsClean = (t) => String(t || '').replace(/\s*[\/|]?\s*Вусы Скарыны\s*$/u, '').trim();
+
+  dash.calc('totals', {
+    inputs: ['episodes'],
+    title: 'Агульныя лічбы',
+    description: 'Сума праглядаў, лайкаў, каментароў і хвілін па ўсіх выпусках',
+    fn: (episodes) => {
+      const years = episodes.map((e) => +String(e.upload_date).slice(0, 4)).filter(Boolean);
+      return [{
+        episodes: episodes.length,
+        views: d3.sum(episodes, (e) => +e.views),
+        likes: d3.sum(episodes, (e) => +e.likes),
+        comments: d3.sum(episodes, (e) => +e.comments),
+        hours: Math.round(d3.sum(episodes, (e) => +e.duration_min) / 60),
+        span: years.length ? `${d3.min(years)}–${d3.max(years)}` : ''
+      }];
+    }
+  });
+
+  dash.calc('by_year', {
+    inputs: ['episodes'],
+    title: 'Выпускі па гадах',
+    description: 'Колькасць выпускаў і сума праглядаў па годзе выхаду',
+    fn: (episodes) => d3.rollups(episodes, (v) => ({ episodes: v.length, views: d3.sum(v, (e) => +e.views) }), (e) => String(e.upload_date).slice(0, 4))
+      .map(([year, o]) => ({ year, episodes: o.episodes, views: o.views }))
+      .sort((a, b) => d3.ascending(a.year, b.year))
+  });
+</script>
+
+<script>
+  const statusText = (s) => s.status === 'error' ? 'Не атрымалася загрузіць' : '—';
+
+  function setNum(el, val, s) {
+    if (s.status === 'ok' && val != null) { el.textContent = typeof val === 'number' ? vsFmt(val) : String(val); el.classList.remove('dash-skeleton'); }
+    else { el.textContent = '—'; if (s.status !== 'loading') el.classList.remove('dash-skeleton'); }
+  }
+  const totDraw = (el) => { const s = dash.data('totals'); setNum(el, s.status === 'ok' && s.data[0] ? s.data[0][el.dataset.field] : null, s); };
+  ['tot-span', 'tot-episodes', 'tot-views', 'kpi'].forEach((n) => dash.draw(n, totDraw));
+
+  dash.draw('num', (el) => {
+    const s = dash.data('numbers');
+    const metric = decodeURIComponent((el.dataset.where || '').split('=')[1] || '');
+    const row = s.status === 'ok' ? s.data.find((r) => r.metric === metric) : null;
+    setNum(el, row ? +row.value : null, s);
+  });
+
+  function bars(el, rows, opts) {
+    el.replaceChildren();
+    if (!rows) { const p = document.createElement('div'); p.className = 'vs-err'; p.textContent = opts.err || '—'; el.append(p); return; }
+    const max = d3.max(rows, (r) => r.value) || 1;
+    rows.forEach((r, i) => {
+      const row = document.createElement('div'); row.className = 'vs-bar-row';
+      const lab = document.createElement('div'); lab.className = 'vs-bar-label'; lab.textContent = r.label;
+      if (r.sub) { const sm = document.createElement('small'); sm.textContent = ' · ' + r.sub; lab.append(sm); }
+      const val = document.createElement('div'); val.className = 'vs-bar-value'; val.textContent = vsFmt(r.value) + (opts.unit || '');
+      if (r.mark) { val.dataset.source = r.mark.source; val.dataset.field = r.mark.field; val.dataset.where = r.mark.where; }
+      const track = document.createElement('div'); track.className = 'vs-bar-track';
+      const fill = document.createElement('div'); fill.className = 'vs-bar-fill';
+      fill.style.width = Math.max(2, (r.value / max) * 100) + '%';
+      fill.style.background = dash.colors[opts.color || 0];
+      track.append(fill); row.append(lab, val, track); el.append(row);
+    });
+  }
+
+  dash.draw('top-views', (el) => {
+    const s = dash.data('episodes');
+    if (s.status !== 'ok') return bars(el, null, { err: statusText(s) });
+    const rows = [...s.data].sort((a, b) => +b.views - +a.views).slice(0, 10)
+      .map((e) => ({ label: vsClean(e.title), sub: String(e.upload_date).slice(0, 4), value: +e.views, mark: { source: 'episodes', field: 'views', where: 'id=' + encodeURIComponent(e.id) } }));
+    bars(el, rows, { color: 0 });
+  });
+
+  dash.draw('most-commented', (el) => {
+    const s = dash.data('episodes');
+    if (s.status !== 'ok') return bars(el, null, { err: statusText(s) });
+    const rows = [...s.data].sort((a, b) => +b.comments - +a.comments).slice(0, 5)
+      .map((e) => ({ label: vsClean(e.title), value: +e.comments, mark: { source: 'episodes', field: 'comments', where: 'id=' + encodeURIComponent(e.id) } }));
+    bars(el, rows, { color: 2 });
+  });
+
+  dash.draw('by-year', (el) => {
+    const s = dash.data('by_year');
+    if (s.status !== 'ok') return bars(el, null, { err: statusText(s) });
+    const rows = s.data.map((r) => ({ label: r.year, sub: vsFmt(r.episodes) + ' вып.', value: r.views, mark: { source: 'by_year', field: 'views', where: 'year=' + r.year } }));
+    bars(el, rows, { color: 1 });
+  });
+
+  const numBars = (prefix, color) => (el) => {
+    const s = dash.data('numbers');
+    if (s.status !== 'ok') return bars(el, null, { err: statusText(s) });
+    const rows = s.data.filter((r) => String(r.metric).startsWith(prefix)).sort((a, b) => +b.value - +a.value)
+      .map((r) => ({ label: r.label, value: +r.value, mark: { source: 'numbers', field: 'value', where: 'metric=' + encodeURIComponent(r.metric) } }));
+    bars(el, rows, { color });
+  };
+  dash.draw('langs', numBars('lang_', 3));
+  dash.draw('cat-forms', numBars('form_', 4));
+
+  dash.draw('quotes', (el) => {
+    const s = dash.data('highlights');
+    el.replaceChildren();
+    if (s.status !== 'ok') { const p = document.createElement('div'); p.className = 'vs-err'; p.textContent = statusText(s); el.append(p); return; }
+    const all = Array.isArray(s.data) ? s.data : (s.data.rows || []);
+    const rows = all.map((r, i) => ({ ...r, _i: i })).filter((r) => r.category === el.dataset.cat).sort((a, b) => +b.likes - +a.likes);
+    rows.forEach((r) => {
+      const card = document.createElement('figure'); card.className = 'vs-quote'; card.style.margin = '0';
+      const t = document.createElement('blockquote'); t.className = 'vs-quote-text'; t.style.margin = '0'; t.textContent = '«' + r.text + '»';
+      const m = document.createElement('figcaption'); m.className = 'vs-quote-meta';
+      const l = document.createElement('span'); l.className = 'vs-quote-likes'; l.textContent = vsFmt(r.likes); l.dataset.source = 'highlights'; l.dataset.field = 'likes'; l.dataset.row = String(r._i);
+      m.append(document.createTextNode('👍 '));
+      m.append(l, document.createTextNode(' · ' + vsClean(r.title)));
+      card.append(t, m); el.append(card);
+    });
+  });
+</script>

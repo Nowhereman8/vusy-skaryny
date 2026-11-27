@@ -40,6 +40,7 @@ def main():
     ap.add_argument("--range", nargs=2, type=int, metavar=("ОТ", "ДО"))
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--audio", default="audio")
+    ap.add_argument("--force", action="store_true", help="перапісаць ужо гатовыя файлы")
     a = ap.parse_args()
 
     key = os.environ.get("GEMINI_API_KEY")
@@ -65,10 +66,11 @@ def main():
     out_dir = os.path.join("transcripts", a.model)
     os.makedirs(out_dir, exist_ok=True)
 
+    fails = 0
     for i, f in enumerate(files, 1):
         base = os.path.splitext(os.path.basename(f))[0]
         txt_path = os.path.join(out_dir, base + ".txt")
-        if os.path.exists(txt_path):
+        if os.path.exists(txt_path) and not a.force:
             print(f"[{i}/{len(files)}] {base} — уже есть, пропускаю")
             continue
 
@@ -104,7 +106,12 @@ def main():
                     time.sleep(10 * (attempt + 1))
         else:
             print(f"!! {base}: не удалось, пропускаю")
+            fails += 1
+            if fails >= 2:
+                sys.exit("Два выпуска подряд не прошли — похоже, кончилась дневная квота. "
+                         "Запусти ту же команду завтра (после ~9:00 по Варшаве), готовое пропустится.")
             continue
+        fails = 0
 
         with open(txt_path, "w", encoding="utf-8") as fh:
             fh.write(text + "\n")

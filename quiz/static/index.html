@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f3ead6">
 <title>Вусы Скарыны · Квіз</title>
-<link rel="stylesheet" href="/static/style.css?v=4">
+<link rel="stylesheet" href="/static/style.css?v=5">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥸</text></svg>">
 </head>
 <body>
@@ -46,6 +46,7 @@
       <button class="link small" type="button" id="pw-cancel" data-t="cancel"></button>
       <p class="err" id="pw-err" hidden></p>
     </form>
+    <p class="card narrow muted small" id="reg-closed" hidden data-t="reg_closed"></p>
     <form class="card narrow" id="new-player">
       <h3 data-t="new_player"></h3>
       <input name="name" maxlength="24" required data-ph="name_ph">
@@ -77,6 +78,7 @@
       <button class="btn" data-go="ach" data-t="achievements"></button>
       <button class="btn" data-go="board" data-t="leaderboard"></button>
       <button class="btn" data-go="settings" data-t="settings"></button>
+      <button class="btn" data-go="admin" id="menu-admin" data-t="admin" hidden></button>
     </div>
   </section>
 
@@ -141,6 +143,56 @@
     </div>
   </section>
 
+  <!-- адмінка -->
+  <section class="screen" id="s-admin" hidden>
+    <h1 class="dropcap" data-t="admin"></h1>
+    <div class="row tabs">
+      <button class="btn tab small on" data-atab="overview" data-t="a_overview"></button>
+      <button class="btn tab small" data-atab="players" data-t="a_players"></button>
+      <button class="btn tab small" data-atab="events" data-t="a_events"></button>
+      <button class="btn tab small" data-atab="reports" data-t="a_reports"></button>
+      <button class="btn tab small" data-atab="settings" data-t="a_settings"></button>
+    </div>
+    <div class="card invite" id="a-invite" hidden>
+      <h3 id="a-invite-title"></h3>
+      <textarea id="a-invite-text" rows="7" readonly></textarea>
+      <div class="row"><button class="btn primary" id="a-invite-copy" data-t="a_copy"></button>
+        <button class="link small" id="a-invite-close" data-t="a_close"></button></div>
+      <p class="muted small" data-t="a_invite_note"></p>
+    </div>
+    <div class="apanel" data-apanel="overview">
+      <div class="kpis" id="a-kpis"></div>
+      <div class="card"><h3 data-t="a_games_days"></h3><div class="days" id="a-days"></div></div>
+    </div>
+    <div class="apanel" data-apanel="players" hidden>
+      <form class="card" id="a-new">
+        <h3 data-t="a_new_player"></h3>
+        <input name="name" maxlength="24" required data-ph="name_ph">
+        <label class="switch small"><input type="checkbox" name="admin"><span data-t="a_make_admin"></span></label>
+        <button class="btn primary" data-t="a_create"></button>
+        <p class="err" id="a-new-err" hidden></p>
+      </form>
+      <div id="a-players"></div>
+    </div>
+    <div class="apanel" data-apanel="events" hidden>
+      <select id="a-ev-player"></select>
+      <div class="card"><div id="a-events"></div>
+        <button class="btn" id="a-ev-more" data-t="a_more" hidden></button></div>
+    </div>
+    <div class="apanel" data-apanel="reports" hidden><div id="a-reports"></div></div>
+    <div class="apanel" data-apanel="settings" hidden>
+      <div class="card">
+        <label class="switch"><input type="checkbox" id="a-selfreg"><span data-t="a_selfreg"></span></label>
+        <p class="muted small" data-t="a_selfreg_hint"></p>
+        <h3 data-t="a_shared"></h3>
+        <input id="a-shared" maxlength="300" data-ph="a_shared_ph">
+        <p class="muted small" data-t="a_shared_hint"></p>
+        <button class="btn" id="a-shared-save" data-t="a_save"></button>
+      </div>
+    </div>
+    <button class="btn" data-go="menu" data-t="to_menu"></button>
+  </section>
+
   <!-- ачыўкі -->
   <section class="screen" id="s-ach" hidden>
     <h1 class="dropcap" data-t="achievements"></h1>
@@ -197,7 +249,7 @@
 </main>
 
 <div class="toast" id="toast" hidden></div>
-<script src="/static/i18n.js?v=4"></script>
-<script src="/static/app.js?v=4"></script>
+<script src="/static/i18n.js?v=5"></script>
+<script src="/static/app.js?v=5"></script>
 </body>
 </html>

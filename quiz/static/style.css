@@ -130,3 +130,31 @@ input, select { width: 100%; font: inherit; padding: 12px; margin: 6px 0; border
 #pw-form .link { margin-top: 6px; }
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .timer-fill { transition: none; } }
+
+/* адмінка */
+.apanel { margin-top: 4px; }
+.days { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; align-items: end; }
+.day { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.day-col { height: 90px; width: 100%; display: flex; align-items: flex-end; background: var(--paper2); border-radius: 4px; overflow: hidden; }
+.day-bar { width: 100%; background: var(--red); }
+.day-n { font-size: 11px; min-height: 1em; } .day-l { font-size: 11px; color: var(--muted); }
+.aplayer { padding: 14px; }
+.ap-head { font-weight: 600; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.badge.gold { border-color: var(--gold); color: var(--gold); } .badge.bad { border-color: var(--bad); color: var(--bad); }
+.ap-acts { margin: 8px 0 0; gap: 6px; } .ap-acts .btn { flex: 0 1 auto; }
+.btn.small { font-size: 14px; padding: 7px 10px; }
+.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); }
+.ev { display: grid; grid-template-columns: 88px 1fr; gap: 0 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.ev:first-child { border-top: 0; }
+.ev-n { font-weight: 600; overflow-wrap: anywhere; } .ev-k { grid-column: 2; } .ev-ip { grid-column: 2; font-size: 12px; }
+.ev-t { grid-row: span 3; font-size: 13px; }
+.ev-login_fail .ev-k, .ev-site_login_fail .ev-k, .ev-login_locked .ev-k, .ev-deleted .ev-k { color: var(--bad); }
+.ev-game_finish .ev-k { color: var(--ok); }
+#a-ev-player { margin-bottom: 4px; }
+.invite { border-color: var(--gold); }
+.invite textarea { width: 100%; font: 15px/1.4 ui-monospace, Menlo, Consolas, monospace; padding: 10px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink); resize: vertical; }
+.report.done { opacity: .55; } .rep-text { font-weight: 600; } .rep-q { color: var(--muted); }
+.switch.small { font-weight: 400; margin: 6px 0; }
+.tabs .btn.small { flex: 1 1 auto; }

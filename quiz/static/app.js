@@ -68,11 +68,12 @@
     });
     avatarPicker($('#avatar-pick'), newAvatar, (a) => (newAvatar = a));
     $('#pw-form').hidden = true;
+    $('#new-player').hidden = !me.self_register; $('#reg-closed').hidden = me.self_register;
     show('players');
   }
 
   // ---------- пароль гульца ----------
-  const pwErr = (e) => t({ badpw: 'pw_bad', locked: 'pw_locked', pw_short: 'pw_short', taken: 'name_taken', short: 'name_short' }[e.message] || 'err');
+  const pwErr = (e) => t({ badpw: 'pw_bad', locked: 'pw_locked', pw_short: 'pw_short', taken: 'name_taken', short: 'name_short', closed: 'pw_closed' }[e.message] || 'err');
   let pwTarget = null;
   function askPassword(p) {
     pwTarget = p;
@@ -111,13 +112,15 @@
   async function openMenu() {
     game = null; stopTimer();
     $('#menu-name').textContent = me.player.name;
+    $('#menu-admin').hidden = !me.player.admin;
+    $('#a-invite').hidden = true; $('#a-invite-text').value = '';   // пароль не павінен застацца на экране
     show('menu');
     try {
       const s = await api('/api/stats');
       $('#menu-note').textContent = t('bank_note', { b: s.bank, e: 121, s: s.seen });
     } catch (e) {}
   }
-  document.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => ({ menu: openMenu, stats: openStats, board: openBoard, settings: openSettings, ach: openAch })[b.dataset.go]()));
+  document.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => ({ menu: openMenu, stats: openStats, board: openBoard, settings: openSettings, ach: openAch, admin: () => openAdmin() })[b.dataset.go]()));
 
   // ---------- гульня ----------
   $('#play').onclick = () => startGame({ era: $('#f-era').value || null, difficulty: +$('#f-diff').value || null });
@@ -196,6 +199,7 @@
   };
   $('#g-quit').onclick = () => {
     if (game && !window.confirm(t('quit_confirm'))) return;
+    if (game) api(`/api/game/${game.id}/quit`, { body: {} }).catch(() => {});
     stopTimer(); game = null; openMenu();
   };
   $('#g-report').onclick = async () => {
@@ -355,6 +359,136 @@
     try { localStorage.setItem('vq_theme', b.dataset.theme); } catch (e) {}
   }));
   $('#logout').onclick = async () => { await api('/api/logout', { body: {} }); me = null; show('login'); };
+
+  // ---------- адмінка ----------
+  let aTab = 'overview', aPlayers = [], aEvBefore = null;
+  async function openAdmin(tab = aTab) {
+    aTab = tab;
+    document.querySelectorAll('[data-atab]').forEach((b) => b.classList.toggle('on', b.dataset.atab === tab));
+    document.querySelectorAll('[data-apanel]').forEach((p) => (p.hidden = p.dataset.apanel !== tab));
+    try { await ({ overview: aOverview, players: aLoadPlayers, events: () => aEvents(true), reports: aReports, settings: aSettings })[tab](); }
+    catch (e) { if (e.status === 403) { toast(t('err')); return openMenu(); } throw e; }
+    show('admin');
+  }
+  document.querySelectorAll('[data-atab]').forEach((b) => (b.onclick = () => openAdmin(b.dataset.atab)));
+
+  async function aOverview() {
+    const o = await api('/api/admin/overview');
+    const k = [['ak_players', o.players], ['ak_seen_week', o.seen_week], ['ak_seen_day', o.seen_day], ['ak_games', `${o.games} (${o.games_week})`],
+      ['ak_answers', o.answers], ['ak_pct', o.right_pct + '%'], ['ak_reports', o.reports_open], ['ak_fails', o.fails_week]];
+    $('#a-kpis').replaceChildren(...k.map(([l, v]) => { const d = el('div', 'kpi'); d.append(el('div', 'kpi-v', v), el('div', 'kpi-l', t(l))); return d; }));
+    const days = [];
+    for (let i = 13; i >= 0; i--) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i); days.push({ d, n: 0 }); }
+    o.games_ts.forEach((ts) => { const x = new Date(ts * 1000); x.setHours(0, 0, 0, 0); const r = days.find((y) => +y.d === +x); if (r) r.n++; });
+    const max = Math.max(1, ...days.map((x) => x.n));
+    $('#a-days').replaceChildren(...days.map((x) => {
+      const c = el('div', 'day'); c.title = `${x.d.getDate()}.${x.d.getMonth() + 1}: ${x.n}`;
+      const bar = el('div', 'day-bar'); bar.style.height = (x.n / max * 100) + '%';
+      c.append(el('div', 'day-n', x.n || ''), el('div', 'day-col'), el('div', 'day-l', x.d.getDate()));
+      c.children[1].append(bar); return c;
+    }));
+  }
+
+  function showInvite(kind, r) {
+    const shared = r.shared ? t('a_invite_shared', { s: r.shared }) : '';
+    $('#a-invite-title').textContent = t(kind, { n: r.name });
+    $('#a-invite-text').value = t('a_invite_text', { url: location.origin, shared, n: r.name, p: r.password });
+    $('#a-invite').hidden = false; $('#a-invite').scrollIntoView({ block: 'start' });
+  }
+  $('#a-invite-close').onclick = () => { $('#a-invite').hidden = true; $('#a-invite-text').value = ''; };
+  $('#a-invite-copy').onclick = async () => {
+    const ta = $('#a-invite-text');
+    try { await navigator.clipboard.writeText(ta.value); } catch (e) { ta.select(); document.execCommand('copy'); }
+    toast(t('a_copied'));
+  };
+
+  $('#a-new').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const f = ev.target, err = $('#a-new-err');
+    try {
+      const r = await api('/api/admin/players', { body: { name: f.elements.name.value, admin: f.elements.admin.checked } });
+      f.reset(); err.hidden = true; await aLoadPlayers(); showInvite('a_invite_created', r);
+    } catch (e) { err.textContent = pwErr(e); err.hidden = false; }
+  };
+
+  async function aLoadPlayers() {
+    aPlayers = await api('/api/admin/players');
+    $('#a-players').replaceChildren(...aPlayers.map((p) => {
+      const c = el('div', 'card aplayer');
+      const h = el('div', 'ap-head', `${p.avatar} ${p.name}`);
+      const self = p.id === me.player.id;
+      if (self) h.append(el('span', 'badge', t('a_you')));
+      if (p.admin) h.append(el('span', 'badge gold', t('a_badge_admin')));
+      if (!p.has_pw) h.append(el('span', 'badge bad', t('a_badge_nopw')));
+      if (p.locked) h.append(el('span', 'badge bad', t('a_badge_locked')));
+      const seen = p.last_seen ? t('a_seen', { d: fmtDate(p.last_seen) }) : t('a_never');
+      const meta = el('div', 'muted small', [seen, t('a_created', { d: fmtDate(p.created) }), p.ip].filter(Boolean).join(' · '));
+      const st = el('div', 'small', p.games ? t('a_stats', { g: p.games, t: p.total, b: p.best, p: p.pct, a: p.ach }) : t('board_none'));
+      const acts = el('div', 'row ap-acts');
+      const btn = (label, fn, cls = '') => { const b = el('button', 'btn small ' + cls, t(label)); b.onclick = fn; acts.append(b); };
+      btn('a_reset', async () => {
+        if (!confirm(t('a_reset_confirm', { n: p.name }))) return;
+        showInvite('a_invite_reset', await api(`/api/admin/players/${p.id}/reset`, { body: {} })); aLoadPlayers();
+      });
+      btn('a_log', () => { $('#a-ev-player').value = p.id; openAdmin('events'); });
+      if (p.locked) btn('a_unlock', async () => { await api(`/api/admin/players/${p.id}/unlock`, { body: {} }); aLoadPlayers(); });
+      if (!self) {
+        btn(p.admin ? 'a_toggle_off' : 'a_toggle_on', async () => { await api(`/api/admin/players/${p.id}/admin`, { body: {} }); aLoadPlayers(); });
+        btn('a_delete', async () => {
+          if (!confirm(t('a_delete_confirm', { n: p.name }))) return;
+          await api(`/api/admin/players/${p.id}`, { method: 'DELETE' }); aLoadPlayers();
+        }, 'danger');
+      }
+      c.append(h, meta, st, acts); return c;
+    }));
+    const sel = $('#a-ev-player'), cur = sel.value;
+    sel.replaceChildren(new Option(t('a_all_players'), ''), ...aPlayers.map((p) => new Option(`${p.avatar} ${p.name}`, p.id)));
+    sel.value = cur;
+  }
+
+  async function aEvents(reset) {
+    if (!aPlayers.length) await aLoadPlayers();
+    if (reset) { aEvBefore = null; $('#a-events').replaceChildren(); }
+    const q = new URLSearchParams({ limit: 100 });
+    if ($('#a-ev-player').value) q.set('player_id', $('#a-ev-player').value);
+    if (aEvBefore) q.set('before', aEvBefore);
+    const rows = await api('/api/admin/events?' + q);
+    const box = $('#a-events');
+    rows.forEach((e) => {
+      const r = el('div', 'ev ev-' + e.kind);
+      r.append(el('span', 'ev-t muted', fmtDate(e.ts)), el('span', 'ev-n', e.name || '—'),
+        el('span', 'ev-k', t('ev_' + e.kind) + (e.detail ? ': ' + e.detail : '')), el('span', 'ev-ip muted', e.ip || ''));
+      box.append(r);
+    });
+    if (reset && !rows.length) box.append(el('p', 'muted', t('a_no_events')));
+    aEvBefore = rows.length ? rows[rows.length - 1].ts : aEvBefore;
+    $('#a-ev-more').hidden = rows.length < 100;
+  }
+  $('#a-ev-player').onchange = () => aEvents(true);
+  $('#a-ev-more').onclick = () => aEvents(false);
+
+  async function aReports() {
+    const rows = await api('/api/admin/reports');
+    const box = $('#a-reports');
+    box.replaceChildren(...rows.map((r) => {
+      const c = el('div', 'card report' + (r.done ? ' done' : ''));
+      c.append(el('div', 'muted small', t('a_report_by', { n: r.name || '—', d: fmtDate(r.ts) }) + ' · ' + r.qid),
+        el('p', 'rep-text', r.text || '—'), el('p', 'rep-q', r.question));
+      if (r.correct != null) c.append(el('p', 'small rev-right', t('a_correct', { a: r.options[r.correct] })));
+      if (r.link) { const a = el('a', 'small', '▶ ' + r.episode_title); a.href = r.link; a.target = '_blank'; a.rel = 'noopener'; c.append(a); }
+      const b = el('button', 'btn small', t(r.done ? 'a_undone' : 'a_done'));
+      b.onclick = async () => { await api(`/api/admin/reports/${r.id}/done`, { body: {} }); aReports(); };
+      const row = el('div', 'row'); row.append(b); c.append(row); return c;
+    }));
+    if (!rows.length) box.append(el('p', 'muted', t('a_no_reports')));
+  }
+
+  async function aSettings() {
+    const s = await api('/api/admin/settings');
+    $('#a-selfreg').checked = s.self_register; $('#a-shared').value = s.invite_shared;
+  }
+  $('#a-selfreg').onchange = async (e) => { const s = await api('/api/admin/settings', { method: 'PUT', body: { self_register: e.target.checked } }); me.self_register = s.self_register; toast(t('a_saved')); };
+  $('#a-shared-save').onclick = async () => { await api('/api/admin/settings', { method: 'PUT', body: { invite_shared: $('#a-shared').value } }); toast(t('a_saved')); };
 
   boot();
 })();

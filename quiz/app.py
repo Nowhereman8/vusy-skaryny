@@ -3,6 +3,7 @@
 Запуск:  uvicorn app:app --host 127.0.0.1 --port 8041
 Першы ўліковы запіс:  python app.py adduser ІМЯ [--admin]
 Скінуць пароль гульцу:  python app.py playerpw ІМЯ
+Даць гульцу адмінку:    python app.py makeadmin ІМЯ
 """
 import base64, hashlib, hmac, json, os, random, secrets, sqlite3, sys, time
 from contextlib import closing
@@ -37,6 +38,9 @@ CREATE TABLE IF NOT EXISTS game_q (game_id TEXT, idx INTEGER, qid TEXT, served R
   points INTEGER, PRIMARY KEY (game_id, idx));
 CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY, qid TEXT, player_id INTEGER, text TEXT, ts REAL, done INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS achievements (player_id INTEGER, code TEXT, ts REAL, PRIMARY KEY (player_id, code));
+CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, ts REAL, player_id INTEGER, name TEXT, kind TEXT, detail TEXT, ip TEXT);
+CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 
 def db():
@@ -48,8 +52,10 @@ def init_db():
     CONF.mkdir(parents=True, exist_ok=True)
     with closing(db()) as con:
         con.executescript(SCHEMA)
-        if "pw" not in {r[1] for r in con.execute("PRAGMA table_info(players)")}:
-            con.execute("ALTER TABLE players ADD COLUMN pw TEXT")   # асабісты пароль гульца
+        cols = {r[1] for r in con.execute("PRAGMA table_info(players)")}
+        for col, ddl in [("pw", "TEXT"), ("admin", "INTEGER DEFAULT 0"), ("last_seen", "REAL")]:
+            if col not in cols:   # pw — асабісты пароль, admin — доступ да адмінкі
+                con.execute(f"ALTER TABLE players ADD COLUMN {col} {ddl}")
         con.commit()
 
 # ---------- паролі і cookie (як у качалцы) ----------
@@ -112,13 +118,37 @@ def player(req: Request, required=True):
         # без пароля або пасля яго змены — трэба ўвайсці нанава
         if row and (not row["pw"] or pw_tag(row["pw"]) != s.get("t")):
             row = None
+        if row and time.time() - (row["last_seen"] or 0) > 60:
+            with closing(db()) as con:
+                con.execute("UPDATE players SET last_seen=? WHERE id=?", (time.time(), row["id"])); con.commit()
     if not row and required:
         raise HTTPException(409, "player")
     return row
 
 def pub_player(r):
     return {"id": r["id"], "name": r["name"], "avatar": r["avatar"], "show_seen": bool(r["show_seen"]),
-            "has_pw": bool(r["pw"])} if r else None
+            "has_pw": bool(r["pw"]), "admin": bool(r["admin"])} if r else None
+
+# ---------- журнал і налады ----------
+def client_ip(req):
+    return req.headers.get("x-real-ip") or (req.client.host if req.client else "")
+
+def log_event(req, kind, p=None, detail="", name=None):
+    with closing(db()) as con:
+        con.execute("INSERT INTO events(ts, player_id, name, kind, detail, ip) VALUES(?,?,?,?,?,?)",
+                    (time.time(), p["id"] if p else None, name or (p["name"] if p else None), kind, str(detail)[:300],
+                     client_ip(req) if req else "")); con.commit()
+
+SETTINGS_DEFAULT = {"self_register": "1", "invite_shared": ""}
+
+def get_setting(key):
+    with closing(db()) as con:
+        r = con.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+    return r[0] if r else SETTINGS_DEFAULT.get(key, "")
+
+def gen_password():
+    abc = "abcdefghjkmnpqrstuvwxyz23456789"   # без l/1/o/0, каб не блытаць
+    return "".join(secrets.choice(abc) for _ in range(8))
 
 MIN_PW = 4
 FAILS = {}   # player_id -> [колькасць няўдач, час апошняй]
@@ -148,12 +178,14 @@ class Login(BaseModel):
     password: str
 
 @app.post("/api/login")
-def login(body: Login):
+def login(body: Login, req: Request):
     with closing(db()) as con:
         row = con.execute("SELECT * FROM accounts WHERE name=?", (body.username.strip(),)).fetchone()
     if not row or not check_pw(body.password, row["pw"]):
+        log_event(req, "site_login_fail", detail=body.username.strip()[:40])
         time.sleep(1)
         raise HTTPException(401, "bad")
+    log_event(req, "site_login")
     resp = JSONResponse({"ok": True})
     set_cookie(resp, "vq_session", sign({"a": row["name"], "t": pw_tag(row["pw"])}))
     return resp
@@ -167,7 +199,7 @@ def logout():
 @app.get("/api/me")
 def me(req: Request):
     acc = account(req)
-    return {"account": acc["name"], "admin": bool(acc["admin"]), "player": pub_player(player(req, False)),
+    return {"account": acc["name"], "player": pub_player(player(req, False)), "self_register": get_setting("self_register") == "1",
             "eras": ERAS, "question_time": QUESTION_TIME, "bank": len(BANK)}
 
 @app.get("/api/players")
@@ -186,23 +218,29 @@ class NewPlayer(BaseModel):
 @app.post("/api/players")
 def new_player(body: NewPlayer, req: Request):
     account(req)
-    name = " ".join(body.name.split())[:24]
+    if get_setting("self_register") != "1":
+        raise HTTPException(403, "closed")
+    row = create_player(body.name, body.password, body.avatar)
+    log_event(req, "created", row, "сам")
+    return player_resp(row)
+
+def create_player(name, password, avatar="🐱", admin=False):
+    name = " ".join(name.split())[:24]
     if len(name) < 2:
         raise HTTPException(400, "short")
-    if len(body.password) < MIN_PW:
+    if len(password) < MIN_PW:
         raise HTTPException(400, "pw_short")
     with closing(db()) as con:   # COLLATE NOCASE не ведае кірыліцы
         if any(r[0].casefold() == name.casefold() for r in con.execute("SELECT name FROM players")):
             raise HTTPException(409, "taken")
     try:
         with closing(db()) as con:
-            cur = con.execute("INSERT INTO players(name, avatar, created, pw) VALUES(?,?,?,?)",
-                              (name, body.avatar[:4] or "🐱", time.time(), hash_pw(body.password)))
+            cur = con.execute("INSERT INTO players(name, avatar, created, pw, admin) VALUES(?,?,?,?,?)",
+                              (name, avatar[:4] or "🐱", time.time(), hash_pw(password), int(admin)))
             con.commit()
-            row = con.execute("SELECT * FROM players WHERE id=?", (cur.lastrowid,)).fetchone()
+            return con.execute("SELECT * FROM players WHERE id=?", (cur.lastrowid,)).fetchone()
     except sqlite3.IntegrityError:
         raise HTTPException(409, "taken")
-    return player_resp(row)
 
 class SelectPlayer(BaseModel):
     id: int
@@ -217,7 +255,10 @@ def select_player(body: SelectPlayer, req: Request):
         if not row:
             raise HTTPException(404, "no player")
         if row["pw"]:
-            check_player_pw(row["id"], body.password, row["pw"])
+            try:
+                check_player_pw(row["id"], body.password, row["pw"])
+            except HTTPException as e:
+                log_event(req, "login_fail" if e.detail == "badpw" else "login_locked", row); raise
         else:
             if len(body.password) < MIN_PW:
                 raise HTTPException(400, "pw_short")
@@ -225,6 +266,7 @@ def select_player(body: SelectPlayer, req: Request):
                 raise HTTPException(403, "badpw")   # хтосьці паспеў задаць пароль раней
             con.commit()
             row = con.execute("SELECT * FROM players WHERE id=?", (body.id,)).fetchone()
+    log_event(req, "login", row)
     return player_resp(row)
 
 class NewPassword(BaseModel):
@@ -240,16 +282,15 @@ def change_password(body: NewPassword, req: Request):
     with closing(db()) as con:
         con.execute("UPDATE players SET pw=? WHERE id=?", (hash_pw(body.new), p["id"])); con.commit()
         row = con.execute("SELECT * FROM players WHERE id=?", (p["id"],)).fetchone()
+    log_event(req, "pw_change", row)
     return player_resp(row)   # новае cookie тут, старыя ў іншых браўзерах перастаюць дзейнічаць
 
 @app.post("/api/player/leave")
 def leave_player(req: Request):
-    """«Гэта не я»: вярнуцца да выбару імя. Незавершаная гульня нікому не залічваецца."""
+    """«Змяніць гульца»: выйсці да выбару імя. Незавершаная гульня ў рэйтынг не трапляе, дадзеныя адказы застаюцца."""
     p = player(req, False)
     if p:
-        with closing(db()) as con:
-            con.execute("DELETE FROM game_q WHERE game_id IN (SELECT id FROM games WHERE player_id=? AND finished IS NULL)", (p["id"],))
-            con.execute("DELETE FROM games WHERE player_id=? AND finished IS NULL", (p["id"],)); con.commit()
+        log_event(req, "logout", p)
     resp = JSONResponse({"ok": True}); resp.delete_cookie("vq_player")
     return resp
 
@@ -306,6 +347,8 @@ def start(body: Start, req: Request):
                     (gid, p["id"], now, len(final), json.dumps(body.model_dump(), ensure_ascii=False)))
         con.executemany("INSERT INTO game_q(game_id, idx, qid) VALUES(?,?,?)", [(gid, i, q["id"]) for i, q in enumerate(final)])
         con.execute("UPDATE game_q SET served=? WHERE game_id=? AND idx=0", (now, gid)); con.commit()
+    f = ", ".join(x for x in [body.era, {1: "лёгкія", 2: "сярэднія", 3: "цяжкія"}.get(body.difficulty)] if x)
+    log_event(req, "game_start", p, f)
     return {"game": gid, "exhausted": exhausted, "question": public_q(final[0], 0, len(final))}
 
 class Answer(BaseModel):
@@ -342,6 +385,9 @@ def answer(gid: str, body: Answer, req: Request):
         con.commit()
         g = con.execute("SELECT score, correct, best_streak, total FROM games WHERE id=?", (gid,)).fetchone()
         new_ach = [] if nxt else sync_achievements(con, p["id"])[1]
+    if not nxt:
+        log_event(req, "game_finish", p, f'{g["correct"]}/{g["total"]} · {g["score"]} ачкоў'
+                  + (" · " + ", ".join(a["title"] for a in new_ach) if new_ach else ""))
     return {"correct": q["correct"], "ok": ok, "points": points, "streak": streak, "myth": q.get("myth_option"),
             "explanation": q["explanation"], "episode_title": q.get("episode_title", ""), "link": yt_link(q),
             "score": g["score"], "right": g["correct"], "best_streak": g["best_streak"], "total": g["total"], "next": nxt,
@@ -380,6 +426,17 @@ def serve_next(gid: str, req: Request):
         row = con.execute("SELECT idx FROM game_q WHERE game_id=? AND answered IS NULL AND game_id IN (SELECT id FROM games WHERE player_id=?) ORDER BY idx LIMIT 1", (gid, p["id"])).fetchone()
         if row:
             con.execute("UPDATE game_q SET served=? WHERE game_id=? AND idx=? AND served IS NULL", (time.time(), gid, row["idx"])); con.commit()
+    return {"ok": True}
+
+@app.post("/api/game/{gid}/quit")
+def quit_game(gid: str, req: Request):
+    """Выхад у меню пасярэдзіне гульні: гульня застаецца незавершанай (не ў рэйтынгу), адказы застаюцца."""
+    p = player(req)
+    with closing(db()) as con:
+        g = con.execute("SELECT * FROM games WHERE id=? AND player_id=? AND finished IS NULL", (gid, p["id"])).fetchone()
+        n = con.execute("SELECT COUNT(*) FROM game_q WHERE game_id=? AND answered IS NOT NULL", (gid,)).fetchone()[0] if g else 0
+    if g:
+        log_event(req, "game_quit", p, f'пасля {n} з {g["total"]} · {g["correct"]} правільна')
     return {"ok": True}
 
 def tc(t):
@@ -433,15 +490,8 @@ def report(body: Report, req: Request):
         raise HTTPException(404, "q")
     with closing(db()) as con:
         con.execute("INSERT INTO reports(qid, player_id, text, ts) VALUES(?,?,?,?)", (body.qid, p["id"], body.text[:500], time.time())); con.commit()
+    log_event(req, "report", p, f"{body.qid}: {body.text[:120]}")
     return {"ok": True}
-
-@app.get("/api/reports")
-def reports(req: Request):
-    if not account(req)["admin"]:
-        raise HTTPException(403, "admin")
-    with closing(db()) as con:
-        rows = con.execute("SELECT r.*, p.name FROM reports r LEFT JOIN players p ON p.id=r.player_id ORDER BY ts DESC").fetchall()
-    return [{**dict(r), "question": BANK.get(r["qid"], {}).get("question", "")} for r in rows]
 
 # ---------- ачыўкі ----------
 EPISODES = len({q["episode"] for q in BANK.values()})
@@ -540,6 +590,165 @@ def sync_all_achievements():   # пры старце: дагнаць ачыўк�
 
 sync_all_achievements()
 
+# ---------- адмінка ----------
+def admin(req: Request):
+    p = player(req)
+    if not p["admin"]:
+        raise HTTPException(403, "admin")
+    return p
+
+def find_player(con, pid):
+    row = con.execute("SELECT * FROM players WHERE id=?", (pid,)).fetchone()
+    if not row:
+        raise HTTPException(404, "no player")
+    return row
+
+@app.get("/api/admin/overview")
+def admin_overview(req: Request):
+    admin(req)
+    now, week = time.time(), time.time() - 7 * 86400
+    with closing(db()) as con:
+        q = lambda sql, *a: con.execute(sql, a).fetchone()[0]
+        out = {
+            "players": q("SELECT COUNT(*) FROM players"),
+            "seen_week": q("SELECT COUNT(*) FROM players WHERE last_seen>=?", week),
+            "seen_day": q("SELECT COUNT(*) FROM players WHERE last_seen>=?", now - 86400),
+            "games": q("SELECT COUNT(*) FROM games WHERE finished IS NOT NULL"),
+            "games_week": q("SELECT COUNT(*) FROM games WHERE finished>=?", week),
+            "answers": q("SELECT COUNT(*) FROM game_q WHERE answered IS NOT NULL"),
+            "right_pct": q("SELECT COALESCE(SUM(points>0)*100/COUNT(*),0) FROM game_q WHERE answered IS NOT NULL"),
+            "reports_open": q("SELECT COUNT(*) FROM reports WHERE done=0"),
+            "fails_week": q("SELECT COUNT(*) FROM events WHERE kind IN ('login_fail','site_login_fail') AND ts>=?", week),
+            "bank": len(BANK),
+            "games_ts": [r[0] for r in con.execute("SELECT finished FROM games WHERE finished>=?", (now - 14 * 86400,))],
+        }
+    return out
+
+@app.get("/api/admin/players")
+def admin_players(req: Request):
+    admin(req)
+    with closing(db()) as con:
+        rows = con.execute("""SELECT p.*, COUNT(g.id) games, COALESCE(SUM(g.score),0) total, COALESCE(MAX(g.score),0) best,
+            COALESCE(SUM(g.correct)*100/SUM(g.total),0) pct,
+            (SELECT COUNT(*) FROM achievements a WHERE a.player_id=p.id) ach,
+            (SELECT ip FROM events e WHERE e.player_id=p.id AND e.ip!='' ORDER BY ts DESC LIMIT 1) ip
+            FROM players p LEFT JOIN games g ON g.player_id=p.id AND g.finished IS NOT NULL
+            GROUP BY p.id ORDER BY COALESCE(p.last_seen, p.created) DESC""").fetchall()
+    return [{"id": r["id"], "name": r["name"], "avatar": r["avatar"], "admin": bool(r["admin"]), "has_pw": bool(r["pw"]),
+             "created": r["created"], "last_seen": r["last_seen"], "games": r["games"], "total": r["total"],
+             "best": r["best"], "pct": r["pct"], "ach": r["ach"], "ip": r["ip"] or "",
+             "locked": FAILS.get(r["id"], (0, 0))[0] >= 5 and time.time() - FAILS[r["id"]][1] < 300} for r in rows]
+
+def invite(name, pw):
+    return {"name": name, "password": pw, "shared": get_setting("invite_shared")}
+
+class AdminNew(BaseModel):
+    name: str
+    admin: bool = False
+
+@app.post("/api/admin/players")
+def admin_new_player(body: AdminNew, req: Request):
+    a = admin(req)
+    pw = gen_password()
+    row = create_player(body.name, pw, admin=body.admin)
+    log_event(req, "created", row, f"адмін {a['name']}")
+    return invite(row["name"], pw)
+
+@app.post("/api/admin/players/{pid}/reset")
+def admin_reset(pid: int, req: Request):
+    a = admin(req)
+    pw = gen_password()
+    with closing(db()) as con:
+        row = find_player(con, pid)
+        con.execute("UPDATE players SET pw=? WHERE id=?", (hash_pw(pw), pid)); con.commit()
+    FAILS.pop(pid, None)
+    log_event(req, "pw_reset", row, f"адмін {a['name']}")
+    return invite(row["name"], pw)
+
+@app.post("/api/admin/players/{pid}/admin")
+def admin_toggle(pid: int, req: Request):
+    a = admin(req)
+    if pid == a["id"]:
+        raise HTTPException(400, "self")
+    with closing(db()) as con:
+        row = find_player(con, pid)
+        con.execute("UPDATE players SET admin=? WHERE id=?", (int(not row["admin"]), pid)); con.commit()
+    log_event(req, "admin_on" if not row["admin"] else "admin_off", row, f"адмін {a['name']}")
+    return {"admin": not row["admin"]}
+
+@app.post("/api/admin/players/{pid}/unlock")
+def admin_unlock(pid: int, req: Request):
+    admin(req); FAILS.pop(pid, None)
+    return {"ok": True}
+
+@app.delete("/api/admin/players/{pid}")
+def admin_delete(pid: int, req: Request):
+    a = admin(req)
+    if pid == a["id"]:
+        raise HTTPException(400, "self")
+    with closing(db()) as con:
+        row = find_player(con, pid)
+        con.execute("DELETE FROM game_q WHERE game_id IN (SELECT id FROM games WHERE player_id=?)", (pid,))
+        for t in ("games", "seen", "achievements"):
+            con.execute(f"DELETE FROM {t} WHERE player_id=?", (pid,))
+        # SQLite можа аддаць гэты id наступнаму гульцу — адвязваем журнал і скаргі (імя ў журнале застаецца)
+        con.execute("UPDATE events SET player_id=NULL WHERE player_id=?", (pid,))
+        con.execute("UPDATE reports SET player_id=NULL, text=? || text WHERE player_id=?", (f"[{row['name']}, выдалены] ", pid))
+        con.execute("DELETE FROM players WHERE id=?", (pid,)); con.commit()
+    log_event(req, "deleted", None, f"адмін {a['name']}", name=row["name"])
+    return {"ok": True}
+
+@app.get("/api/admin/events")
+def admin_events(req: Request, player_id: int | None = None, before: float | None = None, limit: int = 100):
+    admin(req)
+    sql, args = "SELECT * FROM events WHERE 1=1", []
+    if player_id:
+        sql += " AND player_id=?"; args.append(player_id)
+    if before:
+        sql += " AND ts<?"; args.append(before)
+    sql += " ORDER BY ts DESC LIMIT ?"; args.append(min(limit, 500))
+    with closing(db()) as con:
+        return [dict(r) for r in con.execute(sql, args)]
+
+@app.get("/api/admin/reports")
+def admin_reports(req: Request):
+    admin(req)
+    with closing(db()) as con:
+        rows = con.execute("SELECT r.*, p.name FROM reports r LEFT JOIN players p ON p.id=r.player_id ORDER BY done, ts DESC").fetchall()
+    out = []
+    for r in rows:
+        q = BANK.get(r["qid"], {})
+        out.append({**dict(r), "question": q.get("question", ""), "options": q.get("options", []), "correct": q.get("correct"),
+                    "episode_title": q.get("episode_title", ""), "link": yt_link(q) if q else ""})
+    return out
+
+@app.post("/api/admin/reports/{rid}/done")
+def admin_report_done(rid: int, req: Request):
+    admin(req)
+    with closing(db()) as con:
+        con.execute("UPDATE reports SET done=1-done WHERE id=?", (rid,)); con.commit()
+    return {"ok": True}
+
+class AdminSettings(BaseModel):
+    self_register: bool | None = None
+    invite_shared: str | None = None
+
+@app.get("/api/admin/settings")
+def admin_settings_get(req: Request):
+    admin(req)
+    return {"self_register": get_setting("self_register") == "1", "invite_shared": get_setting("invite_shared")}
+
+@app.put("/api/admin/settings")
+def admin_settings(body: AdminSettings, req: Request):
+    admin(req)
+    with closing(db()) as con:
+        if body.self_register is not None:
+            con.execute("INSERT OR REPLACE INTO settings VALUES('self_register', ?)", ("1" if body.self_register else "0",))
+        if body.invite_shared is not None:
+            con.execute("INSERT OR REPLACE INTO settings VALUES('invite_shared', ?)", (body.invite_shared[:300],))
+        con.commit()
+    return admin_settings_get(req)
+
 # ---------- старонка ----------
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 
@@ -555,6 +764,10 @@ if __name__ == "__main__":
         with closing(db()) as con:
             con.execute("INSERT OR REPLACE INTO accounts(name, pw, admin) VALUES(?,?,?)", (name, hash_pw(pw), int("--admin" in sys.argv))); con.commit()
         print("гатова")
+    elif len(sys.argv) >= 3 and sys.argv[1] == "makeadmin":   # даць гульцу доступ да адмінкі
+        with closing(db()) as con:
+            n = con.execute("UPDATE players SET admin=1 WHERE name=?", (sys.argv[2],)).rowcount; con.commit()
+        print("гатова" if n else "няма такога гульца")
     elif len(sys.argv) >= 3 and sys.argv[1] == "playerpw":   # скід пароля гульцу, калі ён забыў
         import getpass
         name = sys.argv[2]; pw = getpass.getpass(f"Новы пароль для гульца {name}: ")

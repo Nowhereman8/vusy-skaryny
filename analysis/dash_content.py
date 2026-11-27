@@ -21,7 +21,7 @@ rows = []
 for g, c in cnt.items():
     items = sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))
     if g == "century": items = sorted(c.items(), key=lambda kv: int(kv[0]))
-    lim = {"person": 40, "main": 30, "place": 30, "food": 20}.get(g)
+    lim = {"person": 40, "place": 30, "food": 20}.get(g)
     if lim: items = items[:lim]
     for label, v in items:
         rows.append({"key": f"{g}:{label}", "group": g, "label": label, "value": v})

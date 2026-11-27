@@ -1,0 +1,14 @@
+[Unit]
+Description=Vusy Skaryny quiz
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/vusy-skaryny/quiz
+Environment=QUIZ_SECURE_COOKIE=1
+ExecStart=/home/ubuntu/vusy-skaryny/quiz/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8041 --proxy-headers
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

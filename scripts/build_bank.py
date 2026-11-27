@@ -3,6 +3,8 @@ import json, glob, random, re, os, csv
 random.seed(42)
 norm = lambda s: re.sub(r"[^\w]+", " ", s.lower()).strip()
 bank, seen, rejected = [], set(), []
+TITLES = {r["id"]: re.sub(r"\s*[/|]?\s*Вусы Скарыны\s*$", "", r["title"]).strip() for r in csv.DictReader(open("analysis/out/episodes.csv"))}
+FACTS = {os.path.basename(f)[:-5]: json.load(open(f)) for f in glob.glob("facts/*.json")}
 for f in sorted(glob.glob("quiz/*.json")):
     stem = os.path.basename(f)[:-5]; ep, yt = stem[:3], stem[4:]
     for i, q in enumerate(json.load(open(f))["questions"]):
@@ -18,6 +20,7 @@ for f in sorted(glob.glob("quiz/*.json")):
         m = q.get("myth_option")
         bank.append({
             "id": f"{ep}-{i:02d}", "episode": int(ep), "youtube_id": yt,
+            "episode_title": TITLES.get(yt, ""), "era": FACTS.get(stem, {}).get("era", ""), "category": FACTS.get(stem, {}).get("category", ""),
             "question": q["question"], "options": [opts[k] for k in order],
             "correct": order.index(c),
             "myth_option": order.index(m) if isinstance(m, int) and 0 <= m < 4 and m != c else None,

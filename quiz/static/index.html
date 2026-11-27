@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="be">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3ead6">
+<title>Вусы Скарыны · Квіз</title>
+<link rel="stylesheet" href="/static/style.css?v=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥸</text></svg>">
+</head>
+<body>
+<header class="top" id="top" hidden>
+  <div class="brand"><span class="logo">🥸</span> <span data-t="brand"></span></div>
+  <div class="who" id="who" hidden>
+    <span id="who-name"></span>
+    <button class="link" id="not-me" data-t="not_me"></button>
+  </div>
+</header>
+
+<main id="app">
+  <!-- уваход -->
+  <section class="screen" id="s-login" hidden>
+    <div class="card narrow">
+      <div class="hero-emoji">🐱🥸📜</div>
+      <h1 data-t="title"></h1>
+      <p class="muted" data-t="login_hint"></p>
+      <form id="login-form">
+        <input name="username" autocomplete="username" required data-ph="login_user">
+        <input name="password" type="password" autocomplete="current-password" required data-ph="login_pass">
+        <button class="btn primary" data-t="login_btn"></button>
+        <p class="err" id="login-err" hidden data-t="login_bad"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- выбар гульца -->
+  <section class="screen" id="s-players" hidden>
+    <h1 class="dropcap" data-t="who_plays"></h1>
+    <div class="tiles" id="player-tiles"></div>
+    <form class="card narrow" id="new-player">
+      <h3 data-t="new_player"></h3>
+      <input name="name" maxlength="24" required data-ph="name_ph">
+      <div class="avatars" id="avatar-pick"></div>
+      <button class="btn primary" data-t="create"></button>
+      <p class="err" id="np-err" hidden></p>
+    </form>
+  </section>
+
+  <!-- меню -->
+  <section class="screen" id="s-menu" hidden>
+    <h1 class="dropcap"><span data-t="hello"></span>, <span id="menu-name"></span>!</h1>
+    <div class="card">
+      <h3 data-t="new_game"></h3>
+      <label class="field"><span data-t="era"></span>
+        <select id="f-era"><option value="" data-t="any_era"></option></select></label>
+      <label class="field"><span data-t="difficulty"></span>
+        <select id="f-diff">
+          <option value="" data-t="any_diff"></option><option value="1" data-t="diff1"></option>
+          <option value="2" data-t="diff2"></option><option value="3" data-t="diff3"></option></select></label>
+      <button class="btn primary big" id="play" data-t="play"></button>
+      <p class="muted small" id="menu-note"></p>
+    </div>
+    <div class="row">
+      <button class="btn" data-go="stats" data-t="my_stats"></button>
+      <button class="btn" data-go="board" data-t="leaderboard"></button>
+      <button class="btn" data-go="settings" data-t="settings"></button>
+    </div>
+  </section>
+
+  <!-- гульня -->
+  <section class="screen" id="s-game" hidden>
+    <div class="game-head">
+      <span id="g-progress"></span>
+      <span class="score"><span data-t="score"></span>: <b id="g-score">0</b></span>
+    </div>
+    <div class="timer"><div class="timer-fill" id="g-timer"></div></div>
+    <div class="card question">
+      <div class="q-era" id="g-era"></div>
+      <h2 id="g-question"></h2>
+      <div class="options" id="g-options"></div>
+      <div class="feedback" id="g-feedback" hidden>
+        <p class="verdict" id="g-verdict"></p>
+        <p id="g-expl"></p>
+        <p class="small"><a id="g-link" target="_blank" rel="noopener"></a></p>
+        <div class="row">
+          <button class="btn primary" id="g-next" data-t="next"></button>
+          <button class="link small" id="g-report" data-t="report"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- вынік -->
+  <section class="screen" id="s-result" hidden>
+    <div class="card narrow center">
+      <div class="hero-emoji" id="r-emoji"></div>
+      <h1 id="r-title"></h1>
+      <p class="big-num" id="r-score"></p>
+      <p id="r-line"></p>
+      <div class="row center">
+        <button class="btn primary" id="r-again" data-t="again"></button>
+        <button class="btn" data-go="menu" data-t="to_menu"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- статыстыка -->
+  <section class="screen" id="s-stats" hidden>
+    <h1 class="dropcap" data-t="my_stats"></h1>
+    <div class="kpis" id="st-kpis"></div>
+    <div class="card"><h3 data-t="by_era"></h3><div id="st-eras"></div></div>
+    <button class="btn" data-go="menu" data-t="to_menu"></button>
+  </section>
+
+  <!-- рэйтынг -->
+  <section class="screen" id="s-board" hidden>
+    <h1 class="dropcap" data-t="leaderboard"></h1>
+    <div class="row"><button class="btn tab on" data-period="all" data-t="all_time"></button>
+      <button class="btn tab" data-period="week" data-t="this_week"></button></div>
+    <div class="card"><ol class="board" id="board"></ol></div>
+    <button class="btn" data-go="menu" data-t="to_menu"></button>
+  </section>
+
+  <!-- налады -->
+  <section class="screen" id="s-settings" hidden>
+    <h1 class="dropcap" data-t="settings"></h1>
+    <div class="card">
+      <label class="switch"><input type="checkbox" id="set-seen"><span data-t="show_seen"></span></label>
+      <p class="muted small" data-t="show_seen_hint"></p>
+      <h3 data-t="avatar"></h3>
+      <div class="avatars" id="set-avatar"></div>
+      <h3 data-t="theme"></h3>
+      <div class="row"><button class="btn" data-theme="light" data-t="light"></button><button class="btn" data-theme="dark" data-t="dark"></button></div>
+    </div>
+    <div class="row">
+      <button class="btn" data-go="menu" data-t="to_menu"></button>
+      <button class="link" id="logout" data-t="logout"></button>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+<script src="/static/i18n.js?v=1"></script>
+<script src="/static/app.js?v=1"></script>
+</body>
+</html>

@@ -47,6 +47,9 @@ input, select { width: 100%; font: inherit; padding: 12px; margin: 6px 0; border
 .btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 11px 16px;
   border-radius: 10px; cursor: pointer; }
 .btn.primary { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; width: 100%; margin-top: 8px; }
+.btn.primary.ok { background: var(--ok); border-color: var(--ok); }
+.btn.primary.bad { background: var(--bad); border-color: var(--bad); }
+[data-theme="dark"] .btn.primary.ok { color: #14200f; }
 .btn.big { font-size: 19px; padding: 15px; }
 .btn.tab.on { border-color: var(--red); color: var(--red); font-weight: 600; }
 .link { background: none; border: 0; color: var(--red); font: inherit; cursor: pointer; text-decoration: underline; padding: 4px; }

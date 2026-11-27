@@ -159,6 +159,7 @@
     if (/^https:\/\//.test(r.link)) { link.href = r.link; link.textContent = t('watch', { t: r.episode_title }); }
     $('#g-score').textContent = r.score;
     $('#g-next').textContent = t(r.next ? 'next' : 'finish');
+    $('#g-next').className = 'btn primary ' + (r.ok ? 'ok' : 'bad');
     $('#g-feedback').hidden = false;
     game.last = r;
   }
